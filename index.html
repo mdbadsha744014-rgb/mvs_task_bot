@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MVS TASK BOT</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #151c2c;
+            --accent-cyan: #00f2fe;
+            --accent-purple: #7928ca;
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --danger: #ff4757;
+            --success: #2ed573;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); padding-bottom: 80px; }
+
+        /* Header Bar */
+        .app-header {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            padding: 15px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            background: var(--card-bg);
+            margin: 15px;
+            padding: 15px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .avatar-box img {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-cyan);
+            object-fit: cover;
+        }
+
+        .user-info { flex: 1; }
+        .user-info h4 { font-size: 1.1rem; }
+        .user-info p { font-size: 0.8rem; color: var(--text-sub); }
+
+        /* Verification Badge */
+        .verify-badge {
+            background: rgba(255, 71, 87, 0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .verify-badge.verified {
+            background: rgba(46, 213, 115, 0.15);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        /* Balance Card */
+        .balance-box {
+            background: linear-gradient(135deg, rgba(121,40,202,0.2), rgba(0,242,254,0.2));
+            margin: 0 15px 15px 15px;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid rgba(0, 242, 254, 0.3);
+        }
+        .balance-box h2 { font-size: 1.8rem; color: var(--accent-cyan); }
+
+        /* Notice Scrolling */
+        .notice-bar {
+            background: rgba(255,255,255,0.03);
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+        }
+
+        /* Grid Tasks Container */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 0 15px;
+        }
+
+        .grid-item {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+        }
+
+        .grid-item i { font-size: 1.8rem; color: var(--accent-cyan); margin-bottom: 8px; }
+        .grid-item h5 { font-size: 0.9rem; }
+        .grid-item span { font-size: 0.75rem; color: var(--text-sub); }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 380px;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--accent-cyan);
+            text-align: center;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            color: #fff;
+            font-weight: 600;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .channel-btn {
+            background: #24A1DE;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+
+        /* Bottom Nav Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 65px;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            z-index: 99;
+        }
+
+        .nav-link {
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-link.active { color: var(--accent-cyan); }
+        .nav-link i { font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">MVS TASK BOT</div>
+
+    <!-- User Profile Header -->
+    <div class="profile-card">
+        <div class="avatar-box">
+            <img id="uAvatar" src="https://via.placeholder.com/60" alt="Avatar">
+        </div>
+        <div class="user-info">
+            <h4 id="uName">User Loading...</h4>
+            <p id="uId">Chat ID: ----------</p>
+            <div id="verifyBtn" class="verify-badge" onclick="openVerifyModal()">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="vText">Account Non-Verified</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Box -->
+    <div class="balance-box">
+        <p style="font-size: 0.85rem; color: var(--text-sub);">বর্তমান ব্যালেন্স</p>
+        <h2 id="uBalance">৳0.00</h2>
+    </div>
+
+    <!-- Notice Bar -->
+    <div class="notice-bar">
+        <marquee>📢 MVS TASK BOT-এ আপনাকে স্বাগতম! সঠিকভাবে কাজ সম্পন্ন করে ইনকাম করুন।</marquee>
+    </div>
+
+    <!-- Grid Menu / Task List -->
+    <div class="grid-container" id="gridContainer">
+        <!-- Buttons loaded dynamically from DB -->
+    </div>
+
+    <!-- Verification Modal -->
+    <div class="modal-overlay" id="verifyModal">
+        <div class="modal-box">
+            <i class="fa-brands fa-telegram" style="font-size: 2.5rem; color: #24A1DE; margin-bottom: 10px;"></i>
+            <h3>Account Verification</h3>
+            <p style="font-size: 0.8rem; color: var(--text-sub); margin-top: 5px;">অ্যাকাউন্ট ভেরিফাই করতে নিচের দুটি টেলিগ্রাম চ্যানেলে জয়েন করে "Verify Account" বাটনে চাপ দিন।</p>
+            
+            <a href="https://t.me/example_channel1" target="_blank" class="channel-btn" onclick="joinedChannel(1)">
+                <i class="fa-brands fa-telegram"></i> Telegram Channel 1
+            </a>
+            <a href="https://t.me/example_channel2" target="_blank" class="channel-btn" onclick="joinedChannel(2)">
+                <i class="fa-brands fa-telegram"></i> Telegram Channel 2
+            </a>
+
+            <button class="btn-action" onclick="submitVerification()">Verify Account</button>
+            <button class="btn-action" style="background: transparent; border: 1px solid #444;" onclick="closeModal('verifyModal')">বাতিল করুন</button>
+        </div>
+    </div>
+
+    <!-- Task Submission Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal-box">
+            <h3 id="modalTaskTitle">Task Details</h3>
+            <p id="modalTaskDesc" style="font-size: 0.8rem; color: var(--text-sub); margin: 8px 0;"></p>
+            <p style="color: var(--accent-cyan); font-weight: 600; margin-bottom: 10px;" id="modalTaskReward"></p>
+            
+            <input type="text" id="proofImageLink" placeholder="কাজের ছবি/স্ক্রিনশট URL লিংক দিন..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #000; color: #fff; margin-bottom: 10px;">
+            <button class="btn-action" onclick="submitTaskProof()">প্রুফ সাবমিট করুন</button>
+            <button class="btn-action" style="background: transparent; border: 1px solid #444;" onclick="closeModal('taskModal')">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-link active"><i class="fa-solid fa-house"></i> Home</a>
+        <a href="#" class="nav-link" onclick="openReferral()"><i class="fa-solid fa-users"></i> Refer</a>
+        <a href="#" class="nav-link" onclick="openWithdraw()"><i class="fa-solid fa-wallet"></i> Wallet</a>
+    </div>
+
+    <script>
+        // 1. Firebase Credentials Setup
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxBvBB5LZBJx9SzRYFraFrk1JdqlH3a6c",
+            authDomain: "trx-zone-bd.firebaseapp.com",
+            databaseURL: "https://trx-zone-bd-default-rtdb.firebaseio.com",
+            projectId: "trx-zone-bd",
+            storageBucket: "trx-zone-bd.firebasestorage.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 2. Telegram WebApp User Context
+        const tg = window.Telegram?.WebApp;
+        if(tg) tg.expand();
+
+        const user = tg?.initDataUnsafe?.user || {
+            id: "998877",
+            first_name: "Demo User",
+            username: "demouser",
+            photo_url: "https://via.placeholder.com/60"
+        };
+
+        let ch1 = false, ch2 = false;
+        let selectedTaskId = null;
+
+        // Initialize User Info
+        document.getElementById('uName').innerText = user.first_name;
+        document.getElementById('uId').innerText = `Chat ID: ${user.id}`;
+        document.getElementById('uAvatar').src = user.photo_url || "https://via.placeholder.com/60";
+
+        // Load & Sync User Data
+        const userRef = db.ref('users/' + user.id);
+        userRef.on('value', (snapshot) => {
+            const val = snapshot.val();
+            if(val) {
+                document.getElementById('uBalance').innerText = `৳${(val.balance || 0).toFixed(2)}`;
+                if(val.isVerified) {
+                    const badge = document.getElementById('verifyBtn');
+                    badge.classList.add('verified');
+                    document.getElementById('vText').innerText = "Verified Account";
+                    badge.onclick = null;
+                }
+            } else {
+                userRef.set({
+                    id: user.id,
+                    name: user.first_name,
+                    username: user.username || "",
+                    balance: 0,
+                    isVerified: false
+                });
+            }
+        });
+
+        // Load Dynamic Task Buttons
+        db.ref('buttons').on('value', (snapshot) => {
+            const grid = document.getElementById('gridContainer');
+            grid.innerHTML = "";
+            const data = snapshot.val();
+            if(data) {
+                Object.keys(data).forEach(key => {
+                    const btn = data[key];
+                    grid.innerHTML += `
+                        <div class="grid-item" onclick="openTaskModal('${key}', '${btn.title}', '${btn.desc}', '${btn.reward}')">
+                            <i class="${btn.icon || 'fa-solid fa-list-check'}"></i>
+                            <h5>${btn.title}</h5>
+                            <span>পেমেন্ট: ৳${btn.reward}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                grid.innerHTML = "<p style='grid-column: span 2; text-align: center; color: var(--text-sub);'>কোনো কাজ উপলব্ধ নেই</p>";
+            }
+        });
+
+        // Verification Logic
+        function openVerifyModal() { document.getElementById('verifyModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function joinedChannel(num) { if(num === 1) ch1 = true; if(num === 2) ch2 = true; }
+        
+        function submitVerification() {
+            if(ch1 && ch2) {
+                userRef.update({ isVerified: true });
+                closeModal('verifyModal');
+                alert("আপনার অ্যাকাউন্ট ভেরিফিকেশন সফল হয়েছে!");
+            } else {
+                alert("দয়া করে দুইটি টেলিগ্রাম চ্যানেলেই জয়েন করুন!");
+            }
+        }
+
+        // Task Submission
+        function openTaskModal(id, title, desc, reward) {
+            selectedTaskId = id;
+            document.getElementById('modalTaskTitle').innerText = title;
+            document.getElementById('modalTaskDesc').innerText = desc;
+            document.getElementById('modalTaskReward').innerText = `রিওয়ার্ড: ৳${reward}`;
+            document.getElementById('taskModal').style.display = 'flex';
+        }
+
+        function submitTaskProof() {
+            const link = document.getElementById('proofImageLink').value;
+            if(!link) return alert("ছবি বা স্ক্রিনশটের ডিরেক্ট লিংক দিন!");
+
+            db.ref('proofs').push({
+                userId: user.id,
+                userName: user.first_name,
+                taskId: selectedTaskId,
+                proofUrl: link,
+                status: 'pending',
+                timestamp: Date.now()
+            });
+
+            alert("প্রুফ সফলভাবে জমা হয়েছে! অ্যাডমিন রিভিউ করবেন।");
+            document.getElementById('proofImageLink').value = "";
+                closeModal('taskModal');
+        }
+
+        function openWithdraw() {
+            const amount = prompt("কত টাকা উইথড্র করতে চান? (৳২০ - ৳২০০০)");
+            const num = prompt("বিকাশ বা নগদ নম্বরটি লিখুন:");
+            if(amount && num) {
+                db.ref('withdrawals').push({
+                    userId: user.id,
+                    userName: user.first_name,
+                    amount: parseFloat(amount),
+                    account: num,
+                    status: 'pending',
+                    timestamp: Date.now()
+                });
+                alert("উইথড্র রিকোয়েস্ট জমা হয়েছে!");
+            }
+        }
+
+        function openReferral() {
+            alert(`আপনার রেফার লিংক:\nhttps://t.me/MVS_TASK_BOT?start=${user.id}\n\nবন্ধু ১টি কাজ শেষ করলে পাবেন ৳২০!`);
+        }
+    </script>
+</body>
+</html>
